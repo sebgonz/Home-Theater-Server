@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link href='https://fonts.googleapis.com/css?family=Architects+Daughter' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print">
+
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+
+    <title>Home Theater Server by sebgonz</title>
+  </head>
+
+  <body>
+    <header>
+      <div class="inner">
+        <h1>Home Theater Server</h1>
+        <h2>A tutorial to fully automate your home media using Plex, Samba, Sickbeard, SABnzbd, Couch Potato and a VPN</h2>
+        <a href="https://github.com/sebgonz/Home-Theater-Server" class="button"><small>View project on</small> GitHub</a>
+      </div>
+    </header>
+
+    <div id="content-wrapper">
+      <div class="inner clearfix">
+        <section id="main-content">
+          <h1>
+<a id="ussscpubuntu-samba-sabnzbd-sickbeard-couchpotato-and-plex" class="anchor" href="#ussscpubuntu-samba-sabnzbd-sickbeard-couchpotato-and-plex" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>USSSCP — Ubuntu, Samba, Sabnzbd+, Sickbeard, Couchpotato and Plex.</h1>
+
+<p><em>I’m going to show you how to set up an Ubuntu Server installation that will auto-update your media, give you the option to feed it to your TV through Plex, and allow you to view the files through your windows computers in your house. You know… just in case your old-school in-laws come over and want to watch something on their new-fangled personal computer.</em></p>
+
+<p>This is the first part in a series of tutorials to configure your server to automate your media and serve it to your home devices. Check out the other parts!</p>
+
+<ul>
+<li>Install Ubuntu and Samba. (You’re here)</li>
+<li>Install and Configure SABnzbd+</li>
+<li>Install and Configure Sickbeard.</li>
+<li>Install and Configure Couchpotato.</li>
+<li>Install and Configure Plex.</li>
+<li>BONUS: Install and Configure Transmission.</li>
+</ul>
+
+<h2>
+<a id="ubuntu" class="anchor" href="#ubuntu" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Ubuntu</h2>
+
+<p>I’m skipping Ubuntu installation. There are <a href="http://www.ubuntu.com/download/server/install-ubuntu-server">many</a>, <em><a href="http://ubuntuserverguide.com/2014/04/how-to-install-ubuntu-server-14-04-trusty-tahr.html">many</a></em>, <em><strong><a href="http://askubuntu.com/questions/340965/how-do-i-install-ubuntu-server-step-by-step">many</a></strong></em> tutorials that you can follow to get through this part. I would simply suggest that you use an Ubuntu Server version, so that you’re not using part of your processing and RAM to serve up a GUI that you’ll likely not use often enough.</p>
+
+<p>I also suggest that you install Ubuntu to its own drive, however this step is completely not necessary, and is really only beneficial if you plan on upgrading your storage space for media in the future.</p>
+
+<hr>
+
+<h2>
+<a id="samba" class="anchor" href="#samba" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Samba</h2>
+
+<p>Once you’ve installed Ubuntu, make sure that you install Samba. We’re going to set it up so that anyone in your network can access certain files, and also set up a different share for your own, personal, files.</p>
+
+<h3>
+<a id="part-1-public-share" class="anchor" href="#part-1-public-share" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Part 1: Public Share</h3>
+
+<p>Note: Let’s get into a bash instance so that we can do all these commands without having to type “sudo” each time.</p>
+
+<pre><code>sudo bash
+
+apt-get install samba samba-common python-glade2 system-config-samba
+</code></pre>
+
+<p>This will install Samba with all of its typical dependencies.</p>
+
+<p>Once that’s done, let’s configure the <code>/etc/samba/smb.conf</code> file. Make a backup of it by entering the following</p>
+
+<pre><code>mv /etc/samba/smb.conf /etc/samba/smb.conf.bak
+</code></pre>
+
+<p>Then let’s actually modify the <code>smb.conf</code> file.</p>
+
+<pre><code>nano /etc/samba/smb.conf
+</code></pre>
+
+<p>Enter the following</p>
+
+<pre><code>[global]
+workgroup = WORKGROUP
+server string = Samba Server %v
+netbios name = ubuntu
+security = user
+map to guest = bad user
+dns proxy = no
+#====================== Share Definitions ========================= 
+[Media]
+path = /media/plex
+browsable =yes
+writable = yes
+guest ok = yes
+read only = no
+</code></pre>
+
+<p>The <code>path = /media/plex</code> and <code>[Media]</code> can be anything you’d like. I usually use <code>[Media]</code> for the name of the share, and <code>/media/plex</code> for the path. This makes it easy to remember where it is, since <code>/media</code> is a common path in Linux.</p>
+
+<p>Now let’s create the directories that we’ll be needing for these shares. In this case, we just need to create the <em>/plex</em> directory in the <em>/media</em> directory.</p>
+
+<pre><code>mkdir -p /media/plex
+</code></pre>
+
+<p>Then restart Samba</p>
+
+<pre><code>service smbd restart
+</code></pre>
+
+<p>You should now be able to access your Samba share through your windows machine by typing the Ubuntu server name in the run window.</p>
+
+<p align="center">
+<img src="http://i.imgur.com/aFid2Dy.jpg">
+</p>
+
+<p>Now, you will notice if you try to create a file that you will have a problem. Windows will tell you that you don’t have permission and will get an error. Go ahead. Try it. I’ll wait.</p>
+
+<p align="center">
+<img src="http://i.imgur.com/yrHB9Uy.png">
+</p>
+
+<p><strong>Let’s fix that, shall we?</strong></p>
+
+<p>Check the permissions of the shared folder.</p>
+
+<pre><code>root@ubuntu:~# ls -l /media
+total 8
+drwxr-xr-x 2 root root 4096 May 17 13:35 cdrom
+drwxr-xr-x 2 root root 4096 May 17 13:35 plex
+</code></pre>
+
+<p>In order for anyone to access the plex folder, we need to change the user and group from <em>root:root</em> to <em>nobody:nogroup</em>.</p>
+
+<pre><code>chmod -R 0755 plex/
+chown -R nobody:nogroup plex/
+</code></pre>
+
+<p>We should get something like this</p>
+
+<pre><code>root@ubuntu:~# ls -l /media
+total 8
+drwxr-xr-x 2 root root 4096 May 17 13:35 cdrom
+drwxr-xr-x 5 nobody nogroup 4096 May 17 17:16 plex
+</code></pre>
+
+<p>You should now be able to browse and create files in the plex directory through Windows.</p>
+
+<h3>
+<a id="part-2-secure-share" class="anchor" href="#part-2-secure-share" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Part 2: Secure Share</h3>
+
+<p>We now need to create a user and group to access the private share with the right authentication.</p>
+
+<pre><code>addgroup justiceleague
+
+adduser batman --ingroup justiceleague
+
+smbpasswd -a batman
+
+root@ubuntu:~# smbpasswd -a batman
+New SMB password:
+Retype new SMB password:
+Added user batman.
+</code></pre>
+
+<p>Now we need to create a new folder for the private share.</p>
+
+<pre><code>mkdir -p /media/batcave
+cd /media
+chmod -R 0770 batcave/
+</code></pre>
+
+<p>Then we need to edit the configuration file again.</p>
+
+<pre><code>nano /etc/samba/smb.conf
+
+[batcave]
+path = /media/batcave
+valid users = @justiceleague
+guest ok = no
+writeable = yes
+browsable = yes
+</code></pre>
+
+<p>Finally, we need to restart the samba service again.</p>
+
+<pre><code>service smbd restart
+</code></pre>
+
+<p>Now you can connect to your new private share with the username and password you just created.</p>
+
+<p align="center">
+<img src="http://i.imgur.com/vFWyEvY.jpg">
+</p>
+
+<p>However, you’ll notice that you still can’t create files in this share. That’s because we need to give access to the the user and group we just created. After all, Batman can’t have his top secret files just floating around for anyone to open all willy nilly.</p>
+
+<pre><code>cd /media
+chown -R batman:justiceleague batcave
+</code></pre>
+
+<p>Congrats! You have a samba share for your media, and another for your private antics.</p>
+
+<p>Sabnzbd+ is up next.</p>
+        </section>
+
+        <aside id="sidebar">
+          <a href="https://github.com/sebgonz/Home-Theater-Server/zipball/master" class="button">
+            <small>Download</small>
+            .zip file
+          </a>
+          <a href="https://github.com/sebgonz/Home-Theater-Server/tarball/master" class="button">
+            <small>Download</small>
+            .tar.gz file
+          </a>
+
+          <p class="repo-owner"><a href="https://github.com/sebgonz/Home-Theater-Server"></a> is maintained by <a href="https://github.com/sebgonz">sebgonz</a>.</p>
+
+          <p>This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the Architect theme by <a href="https://twitter.com/jasonlong">Jason Long</a>.</p>
+        </aside>
+      </div>
+    </div>
+
+  
+  </body>
+</html>
